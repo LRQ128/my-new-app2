@@ -1,96 +1,84 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/dish.dart';
 import '../services/database_service.dart';
 
 class OrderProvider extends ChangeNotifier {
   List<Dish> _dishes = [];
-  List<OrderItem> _todayOrders = [];
-  List<OrderItem> _allOrders = [];
-  List<Recipe> _recipes = [];
+  List<OrderItem> _orders = [];
   bool _isLoading = false;
   int _currentPerson = 0; // 0=点菜人, 1=买菜人
+  int _selectedCategoryIndex = 0;
 
   List<Dish> get dishes => _dishes;
-  List<OrderItem> get todayOrders => _todayOrders;
-  List<OrderItem> get allOrders => _allOrders;
-  List<Recipe> get recipes => _recipes;
+  List<OrderItem> get orders => _orders;
   bool get isLoading => _isLoading;
   int get currentPerson => _currentPerson;
-
   String get currentPersonName => _currentPerson == 0 ? '点菜人' : '买菜人';
+  int get selectedCategoryIndex => _selectedCategoryIndex;
 
-  void switchPerson() {
-    _currentPerson = _currentPerson == 0 ? 1 : 0;
+  set selectedCategoryIndex(int val) {
+    _selectedCategoryIndex = val;
     notifyListeners();
   }
+
+  List<String> get categories => ['全部', '肉类🍖', '炒菜🥘', '主食🍚', '海鲜🦞', '凉菜🥗', '砂锅系列🍲', '臭臭💩(但爱吃)'];
+
+  List<Dish> get filteredDishes {
+    if (_selectedCategoryIndex == 0) return _dishes;
+    final cat = categories[_selectedCategoryIndex].replaceAll(RegExp(r'[🍖🥘🍚🦞🥗🍲💩]'), '').trim();
+    return _dishes.where((d) => d.category.contains(cat)).toList();
+  }
+
+  List<OrderItem> get kitchenOrders => _orders.where((o) => o.status == OrderStatus.ordered).toList();
+  List<OrderItem> get myOrders => _orders.where((o) => o.orderBy == _currentPerson).toList();
+  int get orderCounter => _orders.length + 1; // 用于取餐码
 
   Future<void> loadData() async {
     _isLoading = true;
     notifyListeners();
 
-    _dishes = await DatabaseService.getAllDishes();
-    _allOrders = await DatabaseService.getAllOrders();
-    _recipes = await DatabaseService.getAllRecipes();
-    _todayOrders = await DatabaseService.getOrdersByDate(DateTime.now());
+    try {
+      _dishes = await DatabaseService.getAllDishes();
+      _orders = await DatabaseService.getAllOrders();
+    } catch (e) {
+      debugPrint('loadData error: $e');
+    }
 
     _isLoading = false;
     notifyListeners();
   }
 
+  void switchPerson() {
+    _currentPerson = 1 - _currentPerson;
+    notifyListeners();
+  }
+
   Future<void> addOrder(Dish dish, {String notes = ''}) async {
+    final code = (1000 + _orders.length + 1).toString();
     final order = OrderItem(
       dish: dish,
       orderBy: _currentPerson,
       notes: notes,
+      orderCode: code,
+      userId: '4DR5Q', // 固定用户
     );
+
     await DatabaseService.addOrder(order);
     await loadData();
   }
 
-  Future<void> updateStatus(int orderId, OrderStatus status) async {
-    await DatabaseService.updateOrderStatus(orderId, status);
+  Future<void> completeOrder(int orderId) async {
+    await DatabaseService.updateOrderStatus(orderId, OrderStatus.cooked);
     await loadData();
   }
 
-  Future<void> updateCost(int orderId, double cost) async {
-    await DatabaseService.updateOrderCost(orderId, cost);
+  Future<void> cancelOrder(int orderId) async {
+    await DatabaseService.updateOrderStatus(orderId, OrderStatus.cooked); // 标记完成（取消等同于完成）
     await loadData();
   }
 
-  // 获取购物清单（所有已点但还没买或没做的菜的材料）
-  List<Map<String, String>> getShoppingList() {
-    final shoppingMap = <String, Map<String, String>>{};
-
-    for (final order in _allOrders) {
-      if (order.status == OrderStatus.ordered || order.status == OrderStatus.bought) {
-        final recipe = _recipes.where((r) => r.dishId == order.dish.id).firstOrNull;
-        if (recipe != null) {
-          for (final ing in recipe.ingredients) {
-            if (shoppingMap.containsKey(ing.name)) {
-              // 合并同类项，简单处理
-            } else {
-              shoppingMap[ing.name] = {'name': ing.name, 'amount': ing.amount, 'type': ing.isMain ? '主料' : '配料'};
-            }
-          }
-        }
-      }
-    }
-
-    return shoppingMap.values.toList()
-      ..sort((a, b) => a['type']!.compareTo(b['type']!));
-  }
-
-  List<Map<String, String>> getCookingList() {
-    final result = <Map<String, String>>[];
-    for (final order in _allOrders) {
-      if (order.status == OrderStatus.bought || order.status == OrderStatus.ordered) {
-        final recipe = _recipes.where((r) => r.dishId == order.dish.id).firstOrNull;
-        result.add({
-          'dishName': order.dish.name,
-          'steps': recipe?.steps.join('\n') ?? '暂无菜谱',
-        });
-      }
-    }
-    return result;
+  Future<void> deleteOrder(int orderId) async {
+    await DatabaseService.deleteOrder(orderId);
+    await loadData();
   }
 }

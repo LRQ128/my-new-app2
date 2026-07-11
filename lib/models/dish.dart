@@ -3,7 +3,7 @@ import 'dart:convert';
 class Ingredient {
   final String name;
   final String amount;
-  final bool isMain; // true=主料, false=配料/调料
+  final bool isMain;
 
   Ingredient({
     required this.name,
@@ -67,19 +67,27 @@ class Recipe {
 class Dish {
   final int? id;
   final String name;
-  final String category; // 荤菜/素菜/汤/主食/凉菜
+  final String category;
   final double estimatedPrice;
   final Recipe? recipe;
   final String imageUrl;
+  final double rating; // 评分 1-5
+  final int salesCount; // 销量
+  final int popularity; // 人气值 (🍃图标)
+  final String description; // 简短描述
   final DateTime createdAt;
 
   Dish({
     this.id,
     required this.name,
-    this.category = '荤菜',
+    this.category = '肉类',
     this.estimatedPrice = 0,
     this.recipe,
     this.imageUrl = '',
+    this.rating = 5.0,
+    this.salesCount = 0,
+    this.popularity = 0,
+    this.description = '',
     DateTime? createdAt,
   }) : createdAt = createdAt ?? DateTime.now();
 
@@ -89,19 +97,28 @@ class Dish {
         'category': category,
         'estimatedPrice': estimatedPrice,
         'imageUrl': imageUrl,
+        'rating': rating,
+        'salesCount': salesCount,
+        'popularity': popularity,
+        'description': description,
         'createdAt': createdAt.toIso8601String(),
       };
 
   factory Dish.fromMap(Map<String, dynamic> map) => Dish(
         id: map['id'],
         name: map['name'] ?? '',
-        category: map['category'] ?? '荤菜',
+        category: map['category'] ?? '肉类',
         estimatedPrice: (map['estimatedPrice'] ?? 0).toDouble(),
         imageUrl: map['imageUrl'] ?? '',
+        rating: (map['rating'] ?? 5.0).toDouble(),
+        salesCount: map['salesCount'] ?? 0,
+        popularity: map['popularity'] ?? 0,
+        description: map['description'] ?? '',
         createdAt: DateTime.tryParse(map['createdAt'] ?? '') ?? DateTime.now(),
       );
 }
 
+// 订单状态
 enum OrderStatus { ordered, bought, cooked }
 
 class OrderItem {
@@ -111,7 +128,9 @@ class OrderItem {
   final OrderStatus status;
   final double actualCost;
   final DateTime orderDate;
-  final String notes; // 口味备注
+  final String notes;
+  final String orderCode; // 取餐码
+  final String userId;
 
   OrderItem({
     this.id,
@@ -121,18 +140,22 @@ class OrderItem {
     this.actualCost = 0,
     DateTime? orderDate,
     this.notes = '',
+    this.orderCode = '',
+    this.userId = '',
   }) : orderDate = orderDate ?? DateTime.now();
 
   String get statusText {
     switch (status) {
       case OrderStatus.ordered:
-        return '已点';
+        return '未完成';
       case OrderStatus.bought:
         return '已买';
       case OrderStatus.cooked:
-        return '已做';
+        return '已完成';
     }
   }
+
+  bool get isComplete => status == OrderStatus.cooked;
 
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
@@ -144,6 +167,8 @@ class OrderItem {
         'actualCost': actualCost,
         'orderDate': orderDate.toIso8601String(),
         'notes': notes,
+        'orderCode': orderCode,
+        'userId': userId,
       };
 
   factory OrderItem.fromMap(Map<String, dynamic> map, {Dish? dish}) => OrderItem(
@@ -151,49 +176,14 @@ class OrderItem {
         dish: dish ??
             Dish(
               name: map['dishName'] ?? '',
-              category: map['dishCategory'] ?? '荤菜',
+              category: map['dishCategory'] ?? '肉类',
             ),
         orderBy: map['orderBy'] ?? 0,
         status: OrderStatus.values[map['status'] ?? 0],
         actualCost: (map['actualCost'] ?? 0).toDouble(),
         orderDate: DateTime.tryParse(map['orderDate'] ?? '') ?? DateTime.now(),
         notes: map['notes'] ?? '',
-      );
-}
-
-class CookingTransaction {
-  final int? id;
-  final DateTime date;
-  final double totalCost;
-  final List<int> orderIds;
-  final int paidBy; // 0=点菜人付, 1=买菜人付
-  final String notes;
-
-  CookingTransaction({
-    this.id,
-    DateTime? date,
-    this.totalCost = 0,
-    this.orderIds = const [],
-    this.paidBy = 0,
-    this.notes = '',
-  }) : date = date ?? DateTime.now();
-
-  Map<String, dynamic> toMap() => {
-        if (id != null) 'id': id,
-        'date': date.toIso8601String(),
-        'totalCost': totalCost,
-        'orderIds': jsonEncode(orderIds),
-        'paidBy': paidBy,
-        'notes': notes,
-      };
-
-  factory CookingTransaction.fromMap(Map<String, dynamic> map) =>
-      CookingTransaction(
-        id: map['id'],
-        date: DateTime.tryParse(map['date'] ?? '') ?? DateTime.now(),
-        totalCost: (map['totalCost'] ?? 0).toDouble(),
-        orderIds: (jsonDecode(map['orderIds'] ?? '[]') as List).cast<int>(),
-        paidBy: map['paidBy'] ?? 0,
-        notes: map['notes'] ?? '',
+        orderCode: map['orderCode'] ?? '',
+        userId: map['userId'] ?? '',
       );
 }

@@ -2,11 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'providers/order_provider.dart';
 import 'theme/app_theme.dart';
-import 'pages/home_page.dart';
-import 'pages/menu_page.dart';
-import 'pages/shopping_page.dart';
-import 'pages/cooking_page.dart';
-import 'pages/stats_page.dart';
+import 'pages/recipe_page.dart';
+import 'pages/order_page.dart';
+import 'pages/discover_page.dart';
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,7 +19,7 @@ class MyApp extends StatelessWidget {
     return ChangeNotifierProvider(
       create: (_) => OrderProvider()..loadData(),
       child: MaterialApp(
-        title: '点菜做菜',
+        title: '申大厨的爱心厨房',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         home: const MainPage(),
@@ -41,62 +39,125 @@ class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
 
   final List<Widget> _pages = const [
-    HomePage(),
-    MenuPage(),
-    ShoppingPage(),
-    CookingPage(),
-    StatsPage(),
+    RecipePage(),
+    OrderPage(),
+    DiscoverPage(),
+    MessagePage(),
+    ProfilePage(),
   ];
 
   @override
   Widget build(BuildContext context) {
-    return Consumer<OrderProvider>(
-      builder: (context, provider, child) {
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(_getTitle()),
-            actions: [
-              // 角色切换按钮
-              TextButton.icon(
-                onPressed: () => provider.switchPerson(),
-                icon: Icon(
-                  provider.currentPerson == 0 ? Icons.person : Icons.person_outline,
-                  color: Colors.white,
-                ),
-                label: Text(
-                  provider.currentPersonName,
-                  style: const TextStyle(color: Colors.white, fontSize: 14),
-                ),
-              ),
-            ],
-          ),
-          body: _pages[_currentIndex],
-          bottomNavigationBar: BottomNavigationBar(
-            currentIndex: _currentIndex,
-            onTap: (index) => setState(() => _currentIndex = index),
-            type: BottomNavigationBarType.fixed,
-            selectedItemColor: Colors.orange,
-            items: const [
-              BottomNavigationBarItem(icon: Icon(Icons.home), label: '首页'),
-              BottomNavigationBarItem(icon: Icon(Icons.restaurant_menu), label: '点菜'),
-              BottomNavigationBarItem(icon: Icon(Icons.shopping_cart), label: '买菜'),
-              BottomNavigationBarItem(icon: Icon(Icons.kitchen), label: '做菜'),
-              BottomNavigationBarItem(icon: Icon(Icons.bar_chart), label: '统计'),
-            ],
-          ),
-        );
-      },
+    return Scaffold(
+      body: _pages[_currentIndex],
+      bottomNavigationBar: Container(
+        decoration: BoxDecoration(
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.05),
+              blurRadius: 10,
+              offset: const Offset(0, -2),
+            ),
+          ],
+        ),
+        child: BottomNavigationBar(
+          currentIndex: _currentIndex,
+          onTap: (index) => setState(() => _currentIndex = index),
+          selectedItemColor: AppTheme.primaryGreen,
+          unselectedItemColor: Colors.grey,
+          type: BottomNavigationBarType.fixed,
+          items: const [
+            BottomNavigationBarItem(
+              icon: Icon(Icons.menu_book_outlined),
+              activeIcon: Icon(Icons.menu_book),
+              label: '菜谱',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.receipt_long_outlined),
+              activeIcon: Icon(Icons.receipt_long),
+              label: '订单',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.explore_outlined),
+              activeIcon: Icon(Icons.explore),
+              label: '广场',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.message_outlined),
+              activeIcon: Icon(Icons.message),
+              label: '消息',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.person_outline),
+              activeIcon: Icon(Icons.person),
+              label: '我的',
+            ),
+          ],
+        ),
+      ),
     );
   }
+}
 
-  String _getTitle() {
-    switch (_currentIndex) {
-      case 0: return '首页';
-      case 1: return '点菜';
-      case 2: return '买菜清单';
-      case 3: return '做菜指南';
-      case 4: return '记账统计';
-      default: return '点菜做菜';
-    }
+// 消息占位页
+class MessagePage extends StatelessWidget {
+  const MessagePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('消息')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.message_outlined, size: 80, color: Colors.grey[300]),
+            const SizedBox(height: 16),
+            Text('暂无消息', style: TextStyle(color: Colors.grey[500], fontSize: 16)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// 我的占位页
+class ProfilePage extends StatelessWidget {
+  const ProfilePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('我的')),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircleAvatar(
+              radius: 40,
+              backgroundColor: AppTheme.primaryGreen,
+              child: Text('申', style: TextStyle(fontSize: 30, color: Colors.white)),
+            ),
+            const SizedBox(height: 12),
+            const Text('申大厨', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+            const SizedBox(height: 4),
+            Text('共16个菜谱 · 已完成3餐', style: TextStyle(color: Colors.grey[500])),
+            const SizedBox(height: 30),
+            ListTile(
+              leading: const Icon(Icons.settings_outlined),
+              title: const Text('设置'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
+            ),
+            ListTile(
+              leading: const Icon(Icons.info_outline),
+              title: const Text('关于'),
+              trailing: const Icon(Icons.chevron_right),
+              onTap: () {},
+            ),
+          ],
+        ),
+      ),
+    );
   }
 }
