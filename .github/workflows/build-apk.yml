@@ -7,7 +7,7 @@ on:
 
 env:
   PUB_HOSTED_URL: https://pub.flutter-io.cn
-  FLUTTER_STORAGE_BASE_URL: https://storage.flutter-iouke.cn
+  FLUTTER_STORAGE_BASE_URL: https://storage.flutter-io.cn
 
 jobs:
   build:
@@ -29,30 +29,45 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Generate Keystore
+      - name: Generate keystore
         run: |
           keytool -genkey -v \
-            -keystore android/app/release.keystore \
+            -keystore android/app/release.jks \
             -alias order-cook-app \
             -keyalg RSA -keysize 2048 -validity 36500 \
-            -storepass order.cook123 \
-            -keypass order.cook123 \
-            -dname "CN=LRQ128, OU=Dev, O=Personal, L=Beijing, ST=Beijing, C=CN"
+            -storepass order123456 \
+            -keypass order123456 \
+            -dname "CN=LRQ128, OU=Dev, O=Personal, L=BJ, ST=BJ, C=CN"
 
       - name: Create key.properties
         run: |
-          cat > android/key.properties << 'EOF'
-          storePassword=order.cook123
-          keyPassword=order.cook123
+          cat > android/key.properties << 'PROPS'
+          storePassword=order123456
+          keyPassword=order123456
           keyAlias=order-cook-app
-          storeFile=../app/release.keystore
-          EOF
+          storeFile=../app/release.jks
+          PROPS
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Release APK
-        run: flutter build apk --release
+      - name: Build APK
+        run: |
+          flutter build apk --release
+
+      - name: Sign APK
+        run: |
+          jarsigner -verbose \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -keystore android/app/release.jks \
+            -storepass order123456 \
+            build/app/outputs/flutter-apk/app-release.apk \
+            order-cook-app
+
+      - name: Verify signature
+        run: |
+          jarsigner -verify -verbose build/app/outputs/flutter-apk/app-release.apk
 
       - name: Upload Release APK
         uses: actions/upload-artifact@v4
